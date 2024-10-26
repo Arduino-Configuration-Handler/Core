@@ -1,0 +1,4 @@
+#ifndef __H_CONFIG_HANDLER_CORE__
+#define __H_CONFIG_HANDLER_CORE__
+
+#endif  // __H_CONFIG_HANDLER_CORE__
