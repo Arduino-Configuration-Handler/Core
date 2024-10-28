@@ -4,6 +4,7 @@
 #include <array>
 #include <optional>
 #include <stdexcept>
+#include <tuple>
 #include "ConfigurationUtils.h"
 #include "DataStructures.h"
 #include "StorageMedium.h"
@@ -86,6 +87,22 @@ public:
         }
         // Read the data from the file.
         return ConfigurationFunctions<ConfigurationType>::loadAsObject(fileHandler);
+    }
+
+    /**
+     * @brief Tries to load the configuration objects from the storage medium for all the given configuration types.
+     *
+     * Returns a tuple of optional values for each configuration type, in which every element is the result object for the corresponding configuration type.
+     *
+     * Example usage: `const auto [config1, config2] = confHandler.loadConfigurations<Config1, Config2>();`
+     *
+     * @tparam ConfigurationTypes - The types of configurations you want to load.
+     * @return std::tuple<std::optional<ConfigurationTypes>...> - A tuple of optional objects holding the configuration object for each configuration type.
+     */
+    template <typename... ConfigurationTypes>
+    std::tuple<std::optional<ConfigurationTypes>...> loadConfigurations()
+    {
+        return std::make_tuple(loadConfiguration<ConfigurationTypes>()...);
     }
 
     /**
