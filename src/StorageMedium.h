@@ -98,7 +98,7 @@ public:
   bool isComplete(const String &fileName, const std::vector<ParameterInfo> &parameters);
 
   /**
-   * @brief Deletes the configuration file for this storage medium.
+   * @brief Deletes the configuration file from this storage medium.
    *
    * This method returns true if the file was successfully deleted or if it did not exist on the storage medium.
    * It returns false if the deletion failed for any reason.

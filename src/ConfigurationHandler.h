@@ -88,6 +88,15 @@ public:
         return ConfigurationFunctions<ConfigurationType>::loadAsObject(fileHandler);
     }
 
+    /**
+     * @brief Deletes the configuration files for each configuration type from the storage medium.
+     *
+     * This method returns an array of booleans, each represent if the configuration was successfully deleted.
+     * A `true` value means that either the file was deleted or it did not exist on the storage medium.
+     *
+     * @tparam ConfigurationTypes The configuration types you wish to delete from the storage medium.
+     * @return A results array containing the operation result (success or failure) for each configuration type.
+     */
     template <typename... ConfigurationTypes>
     std::array<bool, sizeof...(ConfigurationTypes)> deleteConfigurations()
     {
