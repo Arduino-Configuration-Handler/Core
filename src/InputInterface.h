@@ -3,8 +3,6 @@
 #include <WString.h>
 #include <map>
 #include <vector>
-#include "ConfigurationHandler.h"
-#include "ConfigurationUtils.h"
 #include "DataStructures.h"
 #include "internal/ParametersManager.h"
 #include "internal/ValidationResult.h"
@@ -16,89 +14,57 @@
  *
  * @tparam ConfigTypes The types of configurations to which you want to get values.
  */
-template <typename... ConfigTypes>
 class InputInterface
 {
 public:
-    InputInterface(ConfigurationHandler &configHandler)
-        : configHandler(configHandler)
+    /**
+     * @brief Sets the validation and save functions, and the parameters manager for following sessions.
+     * 
+     * @param parametersManager The `ParametersManager` instance to use for the next input sessions.
+     * @param validateCallback Callback function to validate the current state of `parametersManager` instance.
+     * @param saveCallback Callback function to save the state the current state of `parametersManager` instance.
+     */
+    void initialize(ParametersManager *parametersManager, const std::function<ChainedValidationResults()> validateCallback, const std::function<void()> saveCallback)
     {
-        static_assert(sizeof...(ConfigTypes) > 0, "At least one type must be provided");
+        this->parameters = parametersManager;
+        this->validate = validateCallback;
+        this->save = saveCallback;
     }
 
     /**
-     * @brief Loads the current values for all the parameters in the configuration types from the storage medium on the configurations handler.
-     *
-     * Then it starts the input interface, and blocks until all input is read and valid.
-     *
+     * @brief Add the configuration's parameters to this input interface.
+     * 
+     * @param info The metadata for configuration to be added.
      */
-    void initializeAndStart()
+    void registerConfiguration(const ConfigInfo &info)
     {
-        parameters = configHandler.loadParameters<ConfigTypes...>();
-        (initType<ConfigTypes>(), ...);
-        start();
+        init(info, parameters->getParametersValues(info.title));
+    }
+
+    /**
+     * @brief Starts this input interface and blocks until the input is validated or the session in canceled.
+     * 
+     */
+    void start()
+    {
+        startImpl();
     }
 
 protected:
-#pragma region Parameters handling functions
-    void setValue(const String &category, const String &parameterName, const String &value)
-    {
-        parameters.setParameterValue(category, parameterName, value);
-    }
+    std::function<ChainedValidationResults()> validate;
+    std::function<void()> save;
 
-    const ValidationResult validateValue(const String &category, const String &parameterName, const String &value)
+    ParametersManager &getParametersManger()
     {
-        return parameters.validateValue(category, parameterName, value);
+        return *parameters;
     }
-
-    std::vector<String> getOptionsFor(const String &category, const String &parameterName, const bool refresh = false)
-    {
-        return parameters.getParameterOptions(category, parameterName, refresh);
-    }
-
-    const String &getOriginalValue(const String &category, const String &parameterName) const
-    {
-        return parameters.getOriginalValue(category, parameterName);
-    }
-#pragma endregion
 
     virtual void init(const ConfigInfo &configInfo, const std::map<String, String> &currentValues) = 0;
 
-    virtual void start() = 0;
-
-    ChainedValidationResults validate()
-    {
-        ChainedValidationResults result = parameters.validateAllValues();
-        // No need to run validation on the types with invalid values that must be changed anyway.
-        if (result.isSuccess())
-            // Append all the results to one object.
-            ((result = result && validateType<ConfigTypes>()), ...);
-        return result;
-    }
-
-    void save()
-    {
-        configHandler.saveConfiguration<ConfigTypes...>(parameters);
-    }
+    virtual void startImpl() = 0;
 
 private:
-    ConfigurationHandler &configHandler;
-    ParametersManager parameters;
-
-    template <typename T>
-    void initType()
-    {
-        ConfigInfo info = ConfigurationFunctions<T>::getConfigInfo();
-        init(info, parameters.getParametersValues(info.title));
-    }
-
-    template <typename T>
-    const ValidationResult validateType()
-    {
-        ConfigInfo info = ConfigurationFunctions<T>::getConfigInfo();
-        const std::map<String, String> t = parameters.getParametersValues(info.title);
-        return ConfigurationFunctions<T>::validate(t);
-    }
+    ParametersManager *parameters;
 };
 
-#endif // __H_INPUTINTERFACE__
+#endif  // __H_INPUT_INTERFACE__

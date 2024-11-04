@@ -7,6 +7,7 @@
 #include <tuple>
 #include "ConfigurationUtils.h"
 #include "DataStructures.h"
+#include "InputInterface.h"
 #include "StorageMedium.h"
 #include "internal/ParametersManager.h"
 
@@ -121,17 +122,32 @@ public:
     }
 
     /**
-     * @brief Load the values for each parameter in each of the configuration types.
+     * @brief Load the values for each parameter in each of the configuration types,
+     * and passes them to the input interface.
+     * 
+     * Then it starts the input interface and blocks until the input interface finishes.
      *
-     * @tparam ConfigurationTypes - The configuration types you wish to load.
-     * @return ParametersManager - An object containing the values for all the parameters.
+     * @tparam ConfigurationTypes - The configuration types you wish to load onto the input interface.
      */
     template <typename... ConfigurationTypes>
-    ParametersManager loadParameters()
+    void startInputInterface(InputInterface &inputInterface)
     {
-        ParametersManager paramsManager;
-        (loadConfigParameters<ConfigurationTypes>(paramsManager), ...);
-        return paramsManager;
+        static_assert(sizeof...(ConfigurationTypes) > 0, "At least one type must be provided");
+        ParametersManager parametersManager;
+        // Read all parameters and their values from all configuration types.
+        (loadConfigParameters<ConfigurationTypes>(parametersManager), ...);
+        inputInterface.initialize(&parametersManager, [this, &parametersManager]()
+                                  {
+             ChainedValidationResults result = parametersManager.validateAllValues();
+ // No need to run validation on the types with invalid values that must be changed anyway.
+ if (result.isSuccess())
+     // Append all the results to one object.
+     ((result = result && validateType<ConfigurationTypes>(parametersManager)), ...);
+ return result; }, [this, &parametersManager]()
+                                  { saveConfiguration<ConfigurationTypes...>(parametersManager); });
+
+        (inputInterface.registerConfiguration(ConfigurationFunctions<ConfigurationTypes>::getConfigInfo()), ...);
+        inputInterface.start();
     }
 
     /**
@@ -148,6 +164,14 @@ public:
 
 private:
     StorageMedium &storageMedium;
+
+    template <typename T>
+    const ValidationResult validateType(ParametersManager &paramsManager)
+    {
+        ConfigInfo info = ConfigurationFunctions<T>::getConfigInfo();
+        const std::map<String, String> t = paramsManager.getParametersValues(info.title);
+        return ConfigurationFunctions<T>::validate(t);
+    }
 
     template <typename ConfigurationType>
     bool configurationExists()
