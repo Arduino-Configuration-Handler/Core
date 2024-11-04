@@ -49,7 +49,7 @@ public:
      *
      * @return String - The error message attached to this validation result.
      */
-    String getError() const
+    const String &getError() const
     {
         return result.value();
     }
@@ -63,9 +63,9 @@ public:
     void match(std::function<void()> onSuccess, std::function<void(const String &)> onFail) const
     {
         if (isSuccess())
-            onFail(result.value());
-        else
             onSuccess();
+        else
+            onFail(result.value());
     }
 
     /**
@@ -80,9 +80,9 @@ public:
     T match(std::function<T()> onSuccess, std::function<T(const String &)> onFail) const
     {
         if (isSuccess())
-            return onFail(result.value());
-        else
             return onSuccess();
+        else
+            return onFail(result.value());
     }
 
 private:
@@ -113,6 +113,16 @@ public:
     }
 
     /**
+     * @brief Unsafe access to the error messages.
+     *
+     * @return The list of error messages for this validation result, or an empty list in case of a successful result.
+     */
+    const std::vector<String> &getErrors() const
+    {
+        return errors;
+    }
+
+    /**
      * @brief Invokes the onSuccess or onFail function depending on the state of the Validation.
      *
      * @param onSuccess - Function to invoke if in a Fail state.
@@ -120,7 +130,7 @@ public:
      */
     void match(std::function<void()> onSuccess, std::function<void(const std::vector<String> &)> onFail) const
     {
-        if (errors.empty())
+        if (isSuccess())
             onSuccess();
         else
             onFail(errors);
@@ -137,7 +147,7 @@ public:
     template <typename T>
     T match(std::function<T()> onSuccess, std::function<T(const std::vector<String> &)> onFail) const
     {
-        if (errors.empty())
+        if (isSuccess())
             return onSuccess();
         else
             return onFail(errors);
